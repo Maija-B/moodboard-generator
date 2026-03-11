@@ -3,6 +3,7 @@ const cors = require('cors')
 const dotenv = require('dotenv')
 const { GoogleGenerativeAI } = require('@google/generative-ai')
 const { createClient } = require('@supabase/supabase-js')
+const fetch = require('node-fetch')
 
 dotenv.config()
 
@@ -12,6 +13,21 @@ app.use(express.json())
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY)
+
+async function getUnsplashImages(keywords) {
+  const query = keywords.slice(0, 3).join(' ')
+  const response = await fetch(
+    `https://api.unsplash.com/search/photos?query=${query} UI design&per_page=3&orientation=landscape`,
+    { headers: { Authorization: `Client-ID ${process.env.UNSPLASH_ACCESS_KEY}` } }
+  )
+  const data = await response.json()
+  return data.results.map(img => ({
+    url: img.urls.regular,
+    thumb: img.urls.thumb,
+    credit: img.user.name,
+    creditLink: img.user.links.html
+  }))
+}
 
 app.post('/generate', async (req, res) => {
   const { prompt } = req.body
@@ -51,6 +67,9 @@ app.post('/generate', async (req, res) => {
   const text = result.response.text()
   const json = JSON.parse(text)
 
+  const images = await getUnsplashImages(json.keywords)
+  json.images = images
+
   const { data, error } = await supabase
     .from('boards')
     .insert({ prompt, current: json, history: [json] })
@@ -84,6 +103,9 @@ app.post('/edit', async (req, res) => {
   const text = result.response.text()
   const json = JSON.parse(text)
 
+  const images = await getUnsplashImages(json.keywords)
+  json.images = images
+
   const { data, error } = await supabase
     .from('boards')
     .update({ current: json })
@@ -107,3 +129,8 @@ app.get('/board/:id', async (req, res) => {
 app.listen(process.env.PORT, () => {
   console.log(`Server running on port ${process.env.PORT}`)
 })
+```
+
+Save it, then add your Unsplash key to Railway variables:
+```
+UNSPLASH_ACCESS_KEY=oos5bik7T9rnBS-EFE9aY6veI7XVoLIxSqwa0r0NZZA
