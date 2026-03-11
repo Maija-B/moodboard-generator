@@ -3,7 +3,6 @@ const cors = require('cors')
 const dotenv = require('dotenv')
 const { GoogleGenerativeAI } = require('@google/generative-ai')
 const { createClient } = require('@supabase/supabase-js')
-const fetch = require('node-fetch')
 
 dotenv.config()
 
