@@ -128,8 +128,3 @@ app.get('/board/:id', async (req, res) => {
 app.listen(process.env.PORT, () => {
   console.log(`Server running on port ${process.env.PORT}`)
 })
-```
-
-Save it, then add your Unsplash key to Railway variables:
-```
-UNSPLASH_ACCESS_KEY=oos5bik7T9rnBS-EFE9aY6veI7XVoLIxSqwa0r0NZZA
