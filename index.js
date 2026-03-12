@@ -14,7 +14,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY)
 
 async function getUnsplashImages(keywords) {
-  const query = keywords.slice(0, 3).join(' ')
+const query = keywords[0] + ' ui design'
   const response = await fetch(
     `https://api.unsplash.com/search/photos?query=${query} UI design&per_page=3&orientation=landscape`,
     { headers: { Authorization: `Client-ID ${process.env.UNSPLASH_ACCESS_KEY}` } }
