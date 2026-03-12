@@ -38,17 +38,31 @@ app.post('/generate', async (req, res) => {
   const fullPrompt = `You are a senior UI/UX design director. Given an app description, return ONLY a valid JSON object with exactly this structure, no markdown, no backticks, no explanation:
 {"name":"mood board name","rationale":"one paragraph design rationale","colors":[{"hex":"#1A1A2E","role":"background"},{"hex":"#E94560","role":"accent"},{"hex":"#FFFFFF","role":"primary text"},{"hex":"#A8A8B3","role":"secondary text"},{"hex":"#16213E","role":"surface"}],"fonts":[{"name":"Inter","role":"body","weight":"400"},{"name":"Playfair Display","role":"heading","weight":"700"}],"keywords":["minimal","dark","modern","bold","clean"],"components":{"borderRadius":"8px","buttonStyle":"filled with sharp corners","spacing":"generous whitespace"}}
 App description: ${prompt}`
-  const result = await model.generateContent(fullPrompt)
-  const text = result.response.text()
-  const json = JSON.parse(text)
-  const images = await getUnsplashImages(json.keywords)
-  json.images = images
-  const { data, error } = await supabase
-    .from('boards')
-    .insert({ prompt, current: json, history: [json] })
-    .select()
-    .single()
-  res.json({ id: data.id, board: json })
+
+  try {
+    const result = await model.generateContent(fullPrompt)
+    const text = result.response.text()
+    const cleanText = text.replace(/```json|```/g, '').trim()
+    const json = JSON.parse(cleanText)
+
+    try {
+      const images = await getUnsplashImages(json.keywords)
+      json.images = images
+    } catch (imgErr) {
+      json.images = []
+    }
+
+    const { data, error } = await supabase
+      .from('boards')
+      .insert({ prompt, current: json, history: [json] })
+      .select()
+      .single()
+
+    res.json({ id: data.id, board: json })
+  } catch (err) {
+    console.error('Generate error:', err)
+    res.status(500).json({ error: err.message })
+  }
 })
 
 app.post('/edit', async (req, res) => {
@@ -63,18 +77,32 @@ IMPORTANT RULES:
 - You MUST update the name and rationale to reflect the change
 - Only preserve fonts and components if the change does not affect them
 - Return ONLY valid JSON in the exact same structure, no markdown, no backticks, no explanation`
-  const result = await model.generateContent(fullPrompt)
-  const text = result.response.text()
-  const json = JSON.parse(text)
-  const images = await getUnsplashImages(json.keywords)
-  json.images = images
-  const { data, error } = await supabase
-    .from('boards')
-    .update({ current: json })
-    .eq('id', boardId)
-    .select()
-    .single()
-  res.json({ id: data.id, board: json })
+
+  try {
+    const result = await model.generateContent(fullPrompt)
+    const text = result.response.text()
+    const cleanText = text.replace(/```json|```/g, '').trim()
+    const json = JSON.parse(cleanText)
+
+    try {
+      const images = await getUnsplashImages(json.keywords)
+      json.images = images
+    } catch (imgErr) {
+      json.images = currentBoard.images
+    }
+
+    const { data, error } = await supabase
+      .from('boards')
+      .update({ current: json })
+      .eq('id', boardId)
+      .select()
+      .single()
+
+    res.json({ id: data.id, board: json })
+  } catch (err) {
+    console.error('Edit error:', err)
+    res.status(500).json({ error: err.message })
+  }
 })
 
 app.get('/board/:id', async (req, res) => {
