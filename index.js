@@ -80,52 +80,19 @@ app.post('/generate', async (req, res) => {
   res.json({ id: data.id, board: json })
 })
 
-app.post('/edit', async (req, res) => {
-  const { currentBoard, editInstruction, boardId } = req.body
+const fullPrompt = `You are a senior UI/UX design director evolving an existing mood board based on feedback.
 
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
+Current mood board:
+${JSON.stringify(currentBoard)}
 
-  const fullPrompt = `
-    You are a senior UI/UX design director. You are evolving an existing mood board based on feedback.
-    
-    Here is the current mood board:
-    ${JSON.stringify(currentBoard)}
-    
-    The user wants this change: "${editInstruction}"
-    
-    Rules:
-    - Only change what the user asked to change
-    - Preserve everything else exactly
-    - Return ONLY a valid JSON object in the exact same structure
-    - No markdown, no backticks, no explanation
-  `
+User wants this change: "${editInstruction}"
 
-  const result = await model.generateContent(fullPrompt)
-  const text = result.response.text()
-  const json = JSON.parse(text)
-
-  const images = await getUnsplashImages(json.keywords)
-  json.images = images
-
-  const { data, error } = await supabase
-    .from('boards')
-    .update({ current: json })
-    .eq('id', boardId)
-    .select()
-    .single()
-
-  res.json({ id: data.id, board: json })
-})
-
-app.get('/board/:id', async (req, res) => {
-  const { data, error } = await supabase
-    .from('boards')
-    .select()
-    .eq('id', req.params.id)
-    .single()
-
-  res.json(data)
-})
+IMPORTANT RULES:
+- You MUST update the colors array with new hex values that reflect the requested change
+- You MUST update the keywords array to match the new direction  
+- You MUST update the name and rationale to reflect the change
+- Only preserve fonts and components if the change doesn't affect them
+- Return ONLY valid JSON in the exact same structure, no markdown, no backticks, no explanation`
 
 app.listen(process.env.PORT, () => {
   console.log(`Server running on port ${process.env.PORT}`)
